@@ -1,41 +1,42 @@
 class Reporte:
     def __init__(self, emisor, receptor, categoria, gravedad, comentario=""):
-        # Categorías sugeridas: "Violencia", "Falta_Asistencia", "No_Pago", "Conducta_Antideportiva"
         self.emisor = emisor
         self.receptor = receptor
         self.categoria = categoria
-        self.gravedad = gravedad  # Escala 1-5
-        self.comentario = comentario  # El texto opcional del usuario
-        self.estado = "Pendiente"  # Esperando revisión del admin
+        self.gravedad = gravedad  # 1-5
+        self.comentario = comentario
+        self.estado = "Pendiente"
 
 class SistemaSeguridad:
     @staticmethod
-    def ejecutar_veredicto(reporte, es_real, puntos_manuales=None):
+    def ejecutar_veredicto(reporte, es_real):
+        """Procesa reportes negativos y fake reports."""
         if es_real:
-            # Si el admin NO pone puntos manuales, usa la fórmula (gravedad * 0.4)
-            if puntos_manuales is None:
-                puntos_a_restar = reporte.gravedad * 0.4
-            else:
-                # Si el admin decide poner un número específico, se usa ese
-                puntos_a_restar = puntos_manuales
-
+            puntos_a_restar = reporte.gravedad * 0.4
             reporte.receptor.ranking -= puntos_a_restar
-
-            # Limitar a que el ranking no sea menor a 0
-            if reporte.receptor.ranking < 0: reporte.receptor.ranking = 0
-
-            return f"Veredicto: Se restaron {puntos_a_restar:.1f} puntos a {reporte.receptor.nombre}."
-
+            # No bajar de 0.0
+            if reporte.receptor.ranking < 0: reporte.receptor.ranking = 0.0
+            return f"PENALIZACIÓN: {reporte.receptor.nombre} perdió {puntos_a_restar:.1f} pts por {reporte.categoria}."
         else:
-            reporte.estado = "Rechazado"
-            # Se resta ranking al EMISOR por mentiroso
-            reporte.emisor.ranking -= 2.0
-            if reporte.emisor.ranking < 0: reporte.emisor.ranking = 0
-
-            return f"Se ha penalizado a {reporte.emisor.nombre} por reporte falso."
+            reporte.emisor.ranking -= 1.5
+            if reporte.emisor.ranking < 0: reporte.emisor.ranking = 0.0
+            return f"FAKE REPORT: {reporte.emisor.nombre} penalizado con -1.5 pts por mentir."
 
     @staticmethod
-    def validar_chat(j1, j2):
-        if j1.equipo == j2.equipo:
-            return True
-        return False
+    def premiar_jugador(receptor, motivo):
+        """Sube el ranking por buen comportamiento o MVP."""
+        # Definimos una subida estándar (puedes ajustarla)
+        puntos_a_subir = 0.2
+        ranking_previo = receptor.ranking
+        receptor.ranking += puntos_a_subir
+
+        # EL TECHO: Nadie puede ser más que un 5.0 perfecto
+        if receptor.ranking > 5.0:
+            receptor.ranking = 5.0
+
+        return (f"PREMIO: {receptor.nombre} recibió +{puntos_a_subir} pts por {motivo}.\n"
+                f"Ranking: {ranking_previo:.1f} -> {receptor.ranking:.1f}")
+
+    @staticmethod
+    def generar_ranking_top(lista_jugadores):
+        return sorted(lista_jugadores, key=lambda j: j.ranking, reverse=True)
